@@ -24,6 +24,12 @@ class AnswerSerializer(serializers.ModelSerializer):
         fields = ['id', 'question', 'text']
 
 
+class QuestionAndAnswer(serializers.Serializer):
+    """Serializer for AssessmentResult model."""
+    question = serializers.CharField(max_length=1000, required=True)
+    answer = serializers.CharField(max_length=1000, required=False)
+
+
 class AssessmentResultSerializer(serializers.ModelSerializer):
     """Serializer for AssessmentResult model."""
     question = QuestionSerializer(read_only=True)
@@ -47,7 +53,7 @@ class AssessmentSerializer(serializers.ModelSerializer):
 
 class CreateAssessmentSerializer(serializers.ModelSerializer):
     """Serializer for creating an Assessment with results."""
-    results = serializers.ListField(child=serializers.DictField(), write_only=True)
+    results = QuestionAndAnswer(many=True, required=False)
 
     class Meta:
         model = Assessment

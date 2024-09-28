@@ -6,15 +6,18 @@ This project is a **Patient Assessment & Management System** built using Django,
 
 ## Setup Instructions
 
-### Prerequisites
+## Tech Stack
 
-- Python 3.8+
+- **Backend**: Django, Django REST Framework
 
-- PostgreSQL
+- **Database**: PostgreSQL
 
-- Django 3.x
+- **Authentication**: JWT and Oauth
 
-- Redis (optional, for caching)
+- **File Storage**: Local storage for profile images and documents
+
+- **API Documentation**: DRF-YASG 
+
 
 ### Installation
 
@@ -113,3 +116,26 @@ While the core functionality was the primary focus, I also added several improve
 - **User-Friendly Error Messages**: Enhanced error handling to provide clearer feedback to users on what went wrong during data submission.
 
 - **Modular Code Structure**: Organized the code into logical modules for better maintainability and scalability.
+
+In my own words, the deployment process to AWS would look something like this:
+
+1. **Prepare the application**:
+   First, make sure the application is production-ready by packaging all necessary files, dependencies, and configuration settings. For instance, if it's a web app, I would ensure the application is containerized (e.g., using Docker) or create the necessary artifacts for deployment.
+
+2. **Choose the appropriate AWS services**:
+   Depending on the nature of the application, I would decide which AWS service best fits the deployment. For instance, if it’s a web application, I would likely use **EC2** to launch instances to host the app. I would also determine whether I need a **Load Balancer** for traffic distribution or **Auto Scaling** to handle changing traffic loads.
+
+3. **Set up the AWS environment**:
+   Before deployment, I would set up the necessary AWS resources. This includes launching EC2 instances, configuring an **S3 bucket** if the application needs file storage, and ensuring that **RDS** or another database service is properly configured if the app requires database support.
+
+4. **Configure security**:
+   Proper security settings are crucial, so I would define **security groups**, set up **IAM roles** for the application, and ensure necessary ports are open while keeping others closed. At this stage, SSL certificates might also be applied if the application needs HTTPS access.
+
+5. **Deploy the application**:
+   The deployment process could vary depending on the tools being used. For EC2, I would typically SSH into the instance and use deployment tools like **Git**, **Ansible**, or even an automated CI/CD tool such as **AWS CodeDeploy** or **Jenkins** to push the app onto the server. 
+
+6. **Monitor with CloudWatch**:
+   Once deployed, I would set up **CloudWatch** for monitoring the health of the EC2 instance, tracking logs, and setting up alarms if something goes wrong. This allows for real-time monitoring and proactive handling of issues.
+
+7. **Finalize and Test**:
+   After deployment, I would perform a thorough round of testing to ensure the app is running as expected. This includes functional testing, load testing, and checking the application's integration with other AWS services like S3, databases, and API Gateway (if applicable).
