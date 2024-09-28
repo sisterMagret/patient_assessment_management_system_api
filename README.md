@@ -78,3 +78,38 @@ This project is a **Patient Assessment & Management System** built using Django,
 
 2. **Access the app**:  
     The app will be accessible at [http://localhost:8000/](http://localhost:8000/).
+
+
+## Assumptions Made During Development
+
+- **User Roles**: It was assumed that there would be a clear distinction between user roles (Patients, Practitioners) to manage permissions and data access effectively.
+
+- **Data Relationships**: I assumed that users would have one-to-one relationships with patients and practitioners, which influenced the design of the models.
+
+- **Network Availability**: I assumed that the application would be deployed in an environment with stable internet access for external API integrations, like sending emails or verifying tokens.
+
+---
+
+## Challenges Faced
+
+One of the significant challenges encountered during development was **data modeling**. Ensuring that the relationships between users, patients, and their respective data were correctly defined required careful planning and iteration.
+
+To overcome this challenge, I:
+
+- Conducted thorough research on Django's ORM capabilities and best practices for relational data.
+
+- Iterated through the models multiple times, soliciting feedback to refine the relationships and attributes.
+
+- Validating user inputs, especially for medical records, was tricky. I created custom validation methods in the models to ensure that only valid data was processed, which enhanced data integrity.
+
+---
+
+## Additional Features or Improvements
+
+While the core functionality was the primary focus, I also added several improvements:
+
+- **Custom Validation Logic**: Implemented custom validation methods within models to ensure data integrity (e.g., ensuring a user can only be linked to a patient if they have the appropriate role).
+
+- **User-Friendly Error Messages**: Enhanced error handling to provide clearer feedback to users on what went wrong during data submission.
+
+- **Modular Code Structure**: Organized the code into logical modules for better maintainability and scalability.
