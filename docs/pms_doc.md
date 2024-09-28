@@ -4,6 +4,40 @@
 
 This project is a **Patient Assessment & Management System** built using Django, Django REST Framework, and PostgreSQL. It manages patient records, user authentication, assessments, and practitioners' details. The system includes models for users, patients, practitioners, medications, allergies, and other related entities, making it suitable for healthcare organizations to keep track of patient health information and perform assessments.
 
+## Assumptions Made During Development
+
+- **User Roles**: It was assumed that there would be a clear distinction between user roles (Patients, Practitioners) to manage permissions and data access effectively.
+
+- **Data Relationships**: I assumed that users would have one-to-one relationships with patients and practitioners, which influenced the design of the models.
+
+- **Network Availability**: I assumed that the application would be deployed in an environment with stable internet access for external API integrations, like sending emails or verifying tokens.
+
+---
+
+## Challenges Faced
+
+One of the significant challenges encountered during development was **data modeling**. Ensuring that the relationships between users, patients, and their respective data were correctly defined required careful planning and iteration.
+
+To overcome this challenge, I:
+
+- Conducted thorough research on Django's ORM capabilities and best practices for relational data.
+
+- Iterated through the models multiple times, soliciting feedback to refine the relationships and attributes.
+
+- Validating user inputs, especially for medical records, was tricky. I created custom validation methods in the models to ensure that only valid data was processed, which enhanced data integrity.
+
+---
+
+## Additional Features or Improvements
+
+While the core functionality was the primary focus, I also added several improvements:
+
+- **Custom Validation Logic**: Implemented custom validation methods within models to ensure data integrity (e.g., ensuring a user can only be linked to a patient if they have the appropriate role).
+
+- **User-Friendly Error Messages**: Enhanced error handling to provide clearer feedback to users on what went wrong during data submission.
+
+- **Modular Code Structure**: Organized the code into logical modules for better maintainability and scalability.
+
 ## Authentication
 
 All API endpoints (except the authentication-related ones) require an authorization header to be included in the request. The system uses **Bearer Token Authentication** to authorize requests.
@@ -50,82 +84,6 @@ Authorization:
 
 ## Project Structure
 
-.  
-|-- Dockerfile  
-|-- setupdb.sh  
-|-- apps  
-| |-- **init**.py  
-| |-- assessment  
-| | |-- **init**.py  
-| | |-- admin.py  
-| | |-- apps.py  
-| | |-- migrations  
-| | | |-- 0001_initial.py  
-| | | |-- **init**.py  
-| | |-- models.py  
-| | |-- routes.py  
-| | |-- serializers.py  
-| | |-- signals.py  
-| | |-- tests  
-| | | |-- **init**.py  
-| | | |-- test_models.py  
-| | | |-- test_views.py
-| | |-- views.py
-| |-- users
-| | |-- **init**.py
-| | |-- admin.py
-| | |-- apps.py
-| | |-- forms.py
-| | |-- migrations
-| | | |-- 0001_initial.py
-| | | |-- **init**.py
-| | |-- models.py
-| | |-- routes.py
-| | |-- serializer.py
-| | |-- signals.py
-| | |-- tests
-| | |-- views.py
-| |-- utils
-| | |-- abstracts.py
-| | |-- authentication.py
-| | |-- base.py
-| | |-- constant.py
-| | |-- country
-| | | |-- **init**.py
-| | | |-- countries.py
-| | | |-- data
-| | | |-- afghanistan.json
-| | |-- encrypt_util.py
-| | |-- enums.py
-| | |-- pagination.py
-| | |-- permissions.py
-| | |-- random_number_generator.py
-| | |-- validators.py
-|-- config
-| |-- **init**.py
-| |-- asgi.py
-| |-- settings
-| | |-- **init**.py
-| | |-- base.py
-| | |-- local.py
-| | |-- production.py
-| |-- urls.py
-| |-- wsgi.py
-|-- db.sqlite3
-|-- docker-compose.yml
-|-- docs
-| |-- pms_doc.md  
-|-- entrypoint.sh  
-|-- logs
-| |-- user.log
-|-- manage.py
-|-- media
-| |-- documents
-| |-- certificates
-| |-- uploaded_ids
-|-- requirements.txt
-|-- staticfiles
-
 - **apps/users**: Handles user authentication, user management. Manages patient-related models like allergies, medications, and emergency contacts. Also Contains details about practitioners, their specialization, and certifications.
 
 - **apps/assessment**: Manages assessment-related models
@@ -133,6 +91,8 @@ Authorization:
 - **apps/utils**: Contains utility code like enums, abstract models (e.g., `AbstractUUID`), and custom validators.
 
 - **setupdb.py**: Used to setup project database
+
+- **config**: Contains django configuration files
 
 ---
 
@@ -227,14 +187,6 @@ The admin panel is customized to make management easier for users, patients, and
 - List display for key model fields.
 
 - Filters for model-specific fields such as `user_role`, `blood_group`, etc.
-
-``` python  
-class UserAdmin(admin.ModelAdmin):  
-search_fields = \["first_name", "last_name", "phone_number", "email"\]  
-list_display = ("id", "phone_number", "email", "first_name", "last_name", "user_role", "gender")  
-admin.site.register(User, UserAdmin)
-
-```
 
 ---
 
