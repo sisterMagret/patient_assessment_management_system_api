@@ -46,10 +46,9 @@ THIRD_PARTY_APPS = [
 ]
 
 CUSTOM_APPS = [
-    "apps.users"
+    "apps.users",
+    "apps.assessment",
 ]
-
-
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -97,16 +96,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -149,12 +138,9 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
 AUTHENTICATION_BACKENDS = ("apps.utils.authentication.CustomAuthBackend",)
 
-
 # EMAIL SETTINGS
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = "Kochanet"
 EMAIL_USE_TLS = True
 EMAIL_HOST = config("EMAIL_HOST")
@@ -188,7 +174,7 @@ SIMPLE_JWT = {
 
 UPLOAD_FILE_TYPES = ["application/pdf", "image/*"]
 UPLOAD_FILE_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".gif", ".png", ".webp"]
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+MAX_FILE_SIZE = 5 * 1024 * 1024 
 
 
 REST_FRAMEWORK = {
@@ -200,6 +186,7 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "PAGE_SIZE": 100,
 }
+
 DATETIME_FORMAT = "D, d M, Y H:i a"
 DATE_FORMAT = "%d/%m/%Y"
 STATIC_URL = "/static/"
@@ -218,6 +205,7 @@ CORS_ORIGIN_ALLOW_ALL = True
 LOGS_DIR = os.path.join(BASE_DIR, "../logs")
 if not os.path.isdir(LOGS_DIR):
     os.mkdir(LOGS_DIR)
+
 LOG_FORMAT = "[%(levelname)s][%(asctime)s]%(message)s - %(pathname)s#lines-%(lineno)s[%(funcName)s]"
 LOG_DATE_FORMAT = "%d/%b/%Y %H:%M:%S"
 LOGGING = {
@@ -253,38 +241,12 @@ LOGGING = {
 }
 LOGIN_URL = "rest_framework:login"
 LOGOUT_URL = "rest_framework:logout"
+
 SWAGGER_SETTINGS = {
     "SECURITY_DEFINITIONS": {"basic": {"type": "basic"}},
     "USE_SESSION_AUTH": True,
     "TAGS_SORTER": "alpha",
 }
-
-
-# REDIS CONFIGURATION
-# REDIS_URL = config("REDIS_URL", f"redis://:{config('REDIS_PASSWORD')}@localhost:6379/0")
-# REDIS = Redis.from_url(REDIS_URL)
-
-# CACHES = {
-#     "default": {
-#         "BACKEND": "django_redis.cache.RedisCache",
-#         "LOCATION": REDIS_URL,
-#         "KEY_PREFIX": "farmfeat",
-#         "OPTIONS": {
-#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-#         },
-#     }
-# }
-# CACHE_TTL = 60 * 1
-# USER_AGENTS_CACHE = 'default'
-
-# CELERY CONFIGURATION
-CELERY_BROKER_URL = f"redis://:{config('REDIS_PASSWORD')}@localhost:6379/0"
-CELERY_RESULT_BACKEND = f"redis://:{config('REDIS_PASSWORD')}@localhost:6379/1"
-CELERY_ACCEPT_CONTENT = ["application/json"]
-CELERY_TASK_SERIALIZER = "json"
-CELERY_RESULT_SERIALIZER = "json"
-CELERY_TIMEZONE = TIME_ZONE
-CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 
 AUTH_USER_MODEL = "users.User"
