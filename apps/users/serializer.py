@@ -60,7 +60,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'phone_number', 'address', 
             'gender', 'avatar', 'is_accept_terms_and_condition', 
              'date_of_birth', 'group', 'date_joined', 'is_active','age',
-             'full_name'
+             'full_name', 'is_verified'
         ]
         extra_kwargs = {'password': {'write_only': True}, "id": {"read_only": True}}
 
@@ -323,7 +323,7 @@ class PractitionerSerializer(serializers.ModelSerializer):
         fields = [
             "id", "user", "license_number", "specializations",
             "means_of_identification_type", "means_of_identification",
-            "certificate", "is_verified", "updated_at",
+            "certificate", "updated_at",
         ]
 
 
@@ -333,7 +333,7 @@ class PractitionerMiniSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Practitioner
-        fields = ["id", "specializations", "user", "is_verified"]
+        fields = ["id", "specializations", "user"]
 
 
 class PractitionerDocumentUploadSerializer(serializers.Serializer):

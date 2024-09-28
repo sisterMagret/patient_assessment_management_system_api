@@ -32,10 +32,10 @@ class User(AbstractUser, AbstractUUID):
     avatar = models.ImageField(upload_to="profile", null=True, blank=True)
     is_accept_terms_and_condition = models.BooleanField(default=False, blank=True)
     first_login = models.BooleanField(default=True, null=True, blank=True)
-    is_active = models.BooleanField(default=False)
     last_login = models.DateTimeField(null=True, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, editable=False)
+    is_verified = models.BooleanField(default=False)
 
     #
     class Meta:
@@ -134,7 +134,7 @@ class Practitioner(AbstractUUID):
     means_of_identification = models.FileField(upload_to="documents/uploaded_ids", null=True, blank=True)
     certificate = models.FileField(upload_to="documents/certificates", null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
-    is_verified = models.BooleanField(default=False)
+    
 
     class Meta:
         db_table = "clinician"

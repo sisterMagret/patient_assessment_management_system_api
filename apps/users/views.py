@@ -414,7 +414,9 @@ class AuthViewSet(ViewSet, Addon):
                     "System could not validate your credentials ,Kindly ensure you enter correct code sent to your mail"
                 )
             instance = AuthToken.objects.filter(token=token, status=0, type=2).first()
-            instance.user.is_active = True
+            if instance.user.is_verified:
+                raise Exception("User already verified")
+            instance.user.is_verified = True
             instance.user.save()
             message = f"Your account have been activated"
             instance.user.email_user(subject="Account activation", message=message, from_email="info@mail.com")
@@ -1186,7 +1188,7 @@ class AddressViewSet(BaseModelViewSet):
    
 
     def get_queryset(self):
-        return self.queryset.filter(user=self.request.user)
+        return self.queryset
 
     @swagger_auto_schema(
         operation_description="This endpoint handles listing addresses",

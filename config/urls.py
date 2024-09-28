@@ -13,11 +13,12 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 
 from apps.users import routes as account_route
+from apps.assessment import routes as assessment_route
 from config import  settings
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="PMS FEAT API",
+        title="PMS API",
         default_version="v1",
         description=Path("docs/pms_doc.md").read_text(encoding="utf8"),
         terms_of_service="https://www.google.com/policies/terms/",
@@ -35,6 +36,7 @@ urlpatterns = [
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     path("api/v1/identity/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/v1/", include(account_route.router.urls)),
+    path("api/v1/", include(assessment_route.router.urls)),
     path(
         "",
         schema_view.with_ui("swagger", cache_timeout=0),
