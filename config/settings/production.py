@@ -5,7 +5,7 @@ DEBUG=False
 DATABASES = {
     "default": {
         "NAME": config("DATABASE_NAME"),
-        "ENGINE": config("DB_ENGINE"),
+        "ENGINE": config("DATABASE_ENGINE"),
         "USER": config("DATABASE_USER"),
         "PORT": config("DATABASE_PORT"),
         "PASSWORD": config("DATABASE_PASSWORD"),

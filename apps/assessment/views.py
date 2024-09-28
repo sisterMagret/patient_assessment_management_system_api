@@ -22,7 +22,7 @@ class AssessmentViewSet(BaseViewSet):
     queryset = Assessment.objects.all()
 
     def get_queryset(self):
-        return self.queryset.filter(Q(patient=self.request.user) | Q(practitioner=self.request.user))
+        return self.queryset
 
     def get_object(self):
         return get_object_or_404(Assessment, pk=self.kwargs.get('pk'))
@@ -36,7 +36,7 @@ class AssessmentViewSet(BaseViewSet):
         context = {"status": status.HTTP_200_OK}
         try:
             paginate = self.get_paginated_data(
-                queryset=self.get_queryset(),
+                queryset=self.get_queryset().filter(Q(patient=self.request.user) | Q(practitioner=self.request.user)),
                 serializer_class=self.serializer_class
             )
             context.update({"data": paginate})
