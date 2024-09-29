@@ -43,9 +43,12 @@ class Addon:
         instance = AuthToken.objects.create(**data)
         return instance
 
-
-    def unique_number_generator(self, model, field, length=6, allowed_chars="0123456789"):
-        unique = get_random_string(length=length, allowed_chars=allowed_chars)
+    def unique_number_generator(
+        self, model, field, length=6, allowed_chars="0123456789"
+    ):
+        unique = get_random_string(
+            length=length, allowed_chars=allowed_chars
+        )
         kwargs = {field: unique}
         qs_exists = model.objects.filter(**kwargs).exists()
         if qs_exists:
@@ -60,7 +63,9 @@ class Addon:
         allowed_chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
         prefix=None,
     ):
-        unique = get_random_string(length=length, allowed_chars=allowed_chars)
+        unique = get_random_string(
+            length=length, allowed_chars=allowed_chars
+        )
         if prefix:
             unique = f"{prefix}_{unique}"
         kwargs = {field: unique}
@@ -137,27 +142,31 @@ class AbstractBaseViewSet:
     def __init__(self):
         pass
 
-
-
     @staticmethod
     def get_practitioner(request):
         if request.GET.get("practitioner_id"):
-            return Practitioner.objects.filter(id=request.GET.get("practitioner_id")).first()
+            return Practitioner.objects.filter(
+                id=request.GET.get("practitioner_id")
+            ).first()
         elif request.user:
             return Practitioner.objects.filter(user=request.user).first()
-        
+
     @staticmethod
     def get_patient(request):
         if request.GET.get("patient_id"):
-            return Patient.objects.filter(id=request.GET.get("patient_id")).first()
+            return Patient.objects.filter(
+                id=request.GET.get("patient_id")
+            ).first()
         elif request.user:
             return Patient.objects.filter(user=request.user).first()
 
     @staticmethod
     def error_message_formatter(serializer_errors):
         """Formats serializer error messages to dictionary"""
-        return {f"{name}": f"{message[0]}" for name, message in serializer_errors.items()}
-
+        return {
+            f"{name}": f"{message[0]}"
+            for name, message in serializer_errors.items()
+        }
 
 
 class BaseViewSet(ViewSet, AbstractBaseViewSet, Addon):
@@ -167,12 +176,20 @@ class BaseViewSet(ViewSet, AbstractBaseViewSet, Addon):
     @staticmethod
     def get_data(request) -> dict:
         """Returns a dictionary from the request"""
-        return request.data if isinstance(request.data, dict) else request.data.dict()
+        return (
+            request.data
+            if isinstance(request.data, dict)
+            else request.data.dict()
+        )
 
     @staticmethod
     def get_data_as_list(request) -> List[dict]:
         """Returns a list from the request"""
-        return request.data if isinstance(request.data, list) else [request.data]
+        return (
+            request.data
+            if isinstance(request.data, list)
+            else [request.data]
+        )
 
     def get_list(self, queryset):
         if "search" in self.request.query_params:
@@ -206,7 +223,11 @@ class BaseModelViewSet(ModelViewSet, AbstractBaseViewSet, Addon):
 
     @staticmethod
     def get_data(request) -> dict:
-        return request.data if isinstance(request.data, dict) else request.data.dict()
+        return (
+            request.data
+            if isinstance(request.data, dict)
+            else request.data.dict()
+        )
 
     def get_list(self, queryset):
         if "search" in self.request.query_params:
@@ -248,11 +269,18 @@ class BaseNoAuthViewSet(ViewSet, Addon):
     @staticmethod
     def error_message_formatter(serializer_errors):
         """Formats serializer error messages to dictionary"""
-        return {f"{name}": f"{message[0]}" for name, message in serializer_errors.items()}
+        return {
+            f"{name}": f"{message[0]}"
+            for name, message in serializer_errors.items()
+        }
 
     @staticmethod
     def get_data(request) -> dict:
-        return request.data if isinstance(request.data, dict) else request.data.dict()
+        return (
+            request.data
+            if isinstance(request.data, dict)
+            else request.data.dict()
+        )
 
     @abstractmethod
     def get_queryset(self):
@@ -274,7 +302,9 @@ class BaseNoAuthViewSet(ViewSet, Addon):
         else:
             query_set = queryset
         if "ordering" in self.request.query_params:
-            query_set = self.order_backend.filter_queryset(query_set, self.request, self)
+            query_set = self.order_backend.filter_queryset(
+                query_set, self.request, self
+            )
         else:
             query_set = query_set.order_by("-pk")
         return query_set
@@ -293,11 +323,20 @@ class BaseNoAuthViewSet(ViewSet, Addon):
         context = {"status": status.HTTP_200_OK}
         try:
             paginate = self.paginator(
-                queryset=self.get_list(self.get_queryset()), serializer_class=self.serializer_class
+                queryset=self.get_list(self.get_queryset()),
+                serializer_class=self.serializer_class,
             )
-            context.update({"status": status.HTTP_200_OK, "message": "OK", "data": paginate})
+            context.update(
+                {
+                    "status": status.HTTP_200_OK,
+                    "message": "OK",
+                    "data": paginate,
+                }
+            )
         except Exception as ex:
-            context.update({"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)})
+            context.update(
+                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
+            )
         return Response(context, status=context["status"])
 
     @swagger_auto_schema(
@@ -307,7 +346,11 @@ class BaseNoAuthViewSet(ViewSet, Addon):
     def retrieve(self, requests, *args, **kwargs):
         context = {"status": status.HTTP_200_OK}
         try:
-            context.update({"data": self.serializer_class(self.get_object()).data})
+            context.update(
+                {"data": self.serializer_class(self.get_object()).data}
+            )
         except Exception as ex:
-            context.update({"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)})
+            context.update(
+                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
+            )
         return Response(context, status=context["status"])

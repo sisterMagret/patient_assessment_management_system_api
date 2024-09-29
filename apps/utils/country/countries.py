@@ -22,14 +22,18 @@ class Countries:
         # get the files path
         __file_dir_path = dirname(realpath(__file__))
         __country_files = __file_dir_path + "/data/"
-        __files_path = [files for files in glob(__country_files + "*.json")]
+        __files_path = [
+            files for files in glob(__country_files + "*.json")
+        ]
         self.__countries = {}
         for file_path in __files_path:
             if isfile(file_path):
                 country_info = json.load(open(file_path, encoding="utf-8"))
                 # pprint(country_info)
                 if country_info.get("name", None):
-                    self.__countries[country_info["name"].lower()] = country_info
+                    self.__countries[country_info["name"].lower()] = (
+                        country_info
+                    )
 
     def info(self):
         """Returns all available information for a specified country.
@@ -78,7 +82,9 @@ class Countries:
         :return: list
         """
         if self.__country_name:
-            _alt_spellings = self.__countries[self.__country_name]["altSpellings"]
+            _alt_spellings = self.__countries[self.__country_name][
+                "altSpellings"
+            ]
             # pprint(_alt_spellings)
 
             return _alt_spellings
@@ -111,7 +117,9 @@ class Countries:
         :return: list
         """
         if self.__country_name:
-            _calling_codes = self.__countries[self.__country_name]["callingCodes"]
+            _calling_codes = self.__countries[self.__country_name][
+                "callingCodes"
+            ]
             # pprint(_calling_codes)
 
             return _calling_codes
@@ -133,7 +141,9 @@ class Countries:
         :return: list
         """
         if self.__country_name:
-            _currencies = self.__countries[self.__country_name]["currencies"]
+            _currencies = self.__countries[self.__country_name][
+                "currencies"
+            ]
             # pprint(_currencies)
 
             return _currencies
@@ -200,7 +210,9 @@ class Countries:
         :return: str
         """
         if self.__country_name:
-            _native_name = self.__countries[self.__country_name]["nativeName"]
+            _native_name = self.__countries[self.__country_name][
+                "nativeName"
+            ]
             # pprint(_native_name)
 
             return _native_name
@@ -211,7 +223,9 @@ class Countries:
         :return: int
         """
         if self.__country_name:
-            _population = self.__countries[self.__country_name]["population"]
+            _population = self.__countries[self.__country_name][
+                "population"
+            ]
             # pprint(_population)
 
             return _population
@@ -266,7 +280,9 @@ class Countries:
         :return: dict
         """
         if self.__country_name:
-            _translations = self.__countries[self.__country_name]["translations"]
+            _translations = self.__countries[self.__country_name][
+                "translations"
+            ]
             # pprint(_translations)
 
             return _translations

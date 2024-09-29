@@ -1,7 +1,19 @@
 from django.contrib import admin
-from .forms import CustomUserChangeForm, CustomUserCreationForm  # Ensure these forms are correctly implemented
-from .models import (Allergy, AuthToken, EmergencyContact,
-                      Medication, Patient, Practitioner, PractitionerSpecialization, User, Address)
+from .forms import (
+    CustomUserChangeForm,
+    CustomUserCreationForm,
+)  # Ensure these forms are correctly implemented
+from .models import (
+    Allergy,
+    AuthToken,
+    EmergencyContact,
+    Medication,
+    Patient,
+    Practitioner,
+    PractitionerSpecialization,
+    User,
+    Address,
+)
 
 
 class UserAdmin(admin.ModelAdmin):
@@ -23,25 +35,37 @@ class UserAdmin(admin.ModelAdmin):
     list_per_page = 100
     list_filter = ("user_role", "gender", "is_active", "date_joined")
 
+
 class EmergencyContactAdmin(admin.ModelAdmin):
     search_fields = ["name", "phone_number"]
     list_display = ["id", "name", "phone_number"]
 
+
 class AllergyAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "description")
+
 
 class AuthTokenAdmin(admin.ModelAdmin):
     search_fields = ["user__first_name", "user__last_name", "token"]
     list_display = ("user", "id", "token", "status", "expiry")
 
+
 class MedicationAdmin(admin.ModelAdmin):
     list_display = ("name", "id")
     search_fields = ("name",)
 
+
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ("user", "blood_group", "genotype", "emergency_contact", "nationality")
+    list_display = (
+        "user",
+        "blood_group",
+        "genotype",
+        "emergency_contact",
+        "nationality",
+    )
     search_fields = ("user__first_name", "user__last_name", "nationality")
     list_filter = ("blood_group", "genotype")
+
 
 class AddressAdmin(admin.ModelAdmin):
     list_display = (
@@ -49,16 +73,14 @@ class AddressAdmin(admin.ModelAdmin):
         "zip_code",
         "country",
         "city",
-        "state",   
-        "town",   
+        "state",
+        "town",
     )
 
+
 class PractitionerSpecializationAdmin(admin.ModelAdmin):
-    list_display = (
-        "name",
-        "description",
-        "id"
-    )
+    list_display = ("name", "description", "id")
+
 
 class PractitionerAdmin(admin.ModelAdmin):
     list_display = (
@@ -69,9 +91,11 @@ class PractitionerAdmin(admin.ModelAdmin):
         "certificate",
         "updated_at",
     )
-    search_fields = ("user__first_name", "user__last_name", "license_number")
-  
-
+    search_fields = (
+        "user__first_name",
+        "user__last_name",
+        "license_number",
+    )
 
 
 admin.site.register(User, UserAdmin)
@@ -81,5 +105,7 @@ admin.site.register(Allergy, AllergyAdmin)
 admin.site.register(Medication, MedicationAdmin)
 admin.site.register(Patient, PatientAdmin)
 admin.site.register(Address, AddressAdmin)
-admin.site.register(PractitionerSpecialization, PractitionerSpecializationAdmin)
+admin.site.register(
+    PractitionerSpecialization, PractitionerSpecializationAdmin
+)
 admin.site.register(Practitioner, PractitionerAdmin)

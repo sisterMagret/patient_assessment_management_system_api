@@ -14,7 +14,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.users import routes as account_route
 from apps.assessment import routes as assessment_route
-from config import  settings
+from config import settings
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -33,8 +33,15 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
-    path("api/v1/identity/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path(
+        "api-auth/",
+        include("rest_framework.urls", namespace="rest_framework"),
+    ),
+    path(
+        "api/v1/identity/refresh/",
+        TokenRefreshView.as_view(),
+        name="token_refresh",
+    ),
     path("api/v1/", include(account_route.router.urls)),
     path("api/v1/", include(assessment_route.router.urls)),
     path(
@@ -43,6 +50,9 @@ urlpatterns = [
         name="schema-swagger-ui",
     ),
 ]
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-
+urlpatterns += static(
+    settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
+)
+urlpatterns += static(
+    settings.STATIC_URL, document_root=settings.STATIC_ROOT
+)

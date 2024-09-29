@@ -14,8 +14,10 @@ def practitioner_access_only():
     def decorator(func):
         @wraps(func)
         def wrapper(request, *args, **kwargs):
-            
-            if not request.user.groups.filter(name=UserGroup.PRACTITIONER).exists():
+
+            if not request.user.groups.filter(
+                name=UserGroup.PRACTITIONER
+            ).exists():
                 return Response(
                     {
                         "status": status.HTTP_403_FORBIDDEN,
@@ -39,8 +41,10 @@ def patient_access_only():
     def decorator(func):
         @wraps(func)
         def wrapper(request, *args, **kwargs):
-            
-            if not request.user.groups.filter(name=UserGroup.USER).exists() :
+
+            if not request.user.groups.filter(
+                name=UserGroup.USER
+            ).exists():
                 return Response(
                     {
                         "status": status.HTTP_403_FORBIDDEN,
@@ -54,9 +58,6 @@ def patient_access_only():
         return wrapper
 
     return decorator
-
-
-
 
 
 def staff_user_access_only():

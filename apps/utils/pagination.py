@@ -13,7 +13,9 @@ class CustomPaginator(PageNumberPagination):
     def generate_response(self, query_set, serializer_obj, request):
         if request.GET.get("is_paging") == "false":
             page_data = query_set
-            serialized_page = serializer_obj(page_data, many=True, context={"request": request})
+            serialized_page = serializer_obj(
+                page_data, many=True, context={"request": request}
+            )
             response = {
                 "status": status.HTTP_200_OK,
                 "message": "ok",
@@ -32,7 +34,9 @@ class CustomPaginator(PageNumberPagination):
                     "message": "No results found for the requested page",
                 }
                 return response
-            serialized_page = serializer_obj(page_data, many=True, context={"request": request})
+            serialized_page = serializer_obj(
+                page_data, many=True, context={"request": request}
+            )
             response = {
                 "status": status.HTTP_200_OK,
                 "message": "ok",

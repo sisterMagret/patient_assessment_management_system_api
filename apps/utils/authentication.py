@@ -6,8 +6,12 @@ from apps.users.models import User
 class CustomAuthBackend(object):
     def authenticate(self, request, username=None, password=None):
         try:
-            user = User.objects.get(Q(email=username) | Q(phone_number=username) | Q(username=username))
-   
+            user = User.objects.get(
+                Q(email=username)
+                | Q(phone_number=username)
+                | Q(username=username)
+            )
+
             if user.check_password(password):
                 return user
             return None
