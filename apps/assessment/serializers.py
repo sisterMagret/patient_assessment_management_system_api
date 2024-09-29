@@ -6,6 +6,15 @@ class AnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Answer
         fields = ['id', 'text', 'is_correct']
+        read_only_fields = ['id']  # Assuming id should not be modified
+
+    def validate(self, attrs):
+        """Ensure only one answer can be marked as correct per question."""
+        question_id = self.initial_data.get('question')
+        if attrs.get('is_correct'):
+            if Answer.objects.filter(question_id=question_id, is_correct=True).exists():
+                raise serializers.ValidationError("Only one answer can be marked as correct.")
+        return attrs
 
 
 class QuestionSerializer(serializers.ModelSerializer):
@@ -100,8 +109,6 @@ class AssessmentSerializer(serializers.ModelSerializer):
         model = Assessment
         fields = ['id', 'assessment_type', 'patient', 'final_score', 'results', 'date']
 
-
-from rest_framework import serializers
 
 class AssessmentTypeSerializer(serializers.ModelSerializer):
     class Meta:

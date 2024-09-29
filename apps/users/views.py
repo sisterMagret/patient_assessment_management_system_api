@@ -1006,59 +1006,62 @@ class UserViewSet(BaseViewSet):
             )
         return Response(context, status=context["status"])
 
+
     @swagger_auto_schema(
+        method='put',
+        operation_summary="Update an address",
+        operation_description="Update an existing address for a specific user.",
         request_body=AddressSerializer,
+    )
+
+    @swagger_auto_schema(
+        method='post',
         operation_description="This endpoint handles adding address",
         operation_summary="Add address endpoint",
+        request_body=AddressSerializer
     )
     @action(
         detail=False,
-        methods=["post"],
-        description="Create Address",
+        methods=["post", "put"],
+        description="Manage User Address",
         url_path="address",
     )
-    def create_address(self, request, *args, **kwargs):
+    def address(self, request, *args, **kwargs):
         """
         This method handles adding address
         """
         context = {"status": status.HTTP_201_CREATED}
         try:
-            print(request.user.address)
-            data = self.get_data(request)
-            serializer = AddressSerializer(data=data)
-            if serializer.is_valid():
-                instance = serializer.create(serializer.validated_data)
-                if request.user.address:
-                    request.user.address.delete()
-                request.user.address = instance
-                request.user.save()
-                context.update({"data": AddressSerializer(instance).data})
-            else:
-                context.update(
-                    {
-                        "status": status.HTTP_400_BAD_REQUEST,
-                        "errors": self.error_message_formatter(
-                            serializer.errors
-                        ),
-                    }
-                )
+           
+            if request.method == "PUT":
+                self.update_address(request, args, kwargs)
+            
+            elif request.method == "POST":
+                data = self.get_data(request)
+                serializer = AddressSerializer(data=data)
+                if serializer.is_valid():
+                    instance = serializer.create(serializer.validated_data)
+                    if request.user.address:
+                        request.user.address.delete()
+                    request.user.address = instance
+                    request.user.save()
+                    context.update({"data": AddressSerializer(instance).data})
+                else:
+                    context.update(
+                        {
+                            "status": status.HTTP_400_BAD_REQUEST,
+                            "errors": self.error_message_formatter(
+                                serializer.errors
+                            ),
+                        }
+                    )
         except Exception as ex:
             context.update(
                 {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
             )
         return Response(context, status=context["status"])
 
-    @swagger_auto_schema(
-        request_body=AddressSerializer,
-        operation_description="This endpoint handles updating address",
-        operation_summary="update address endpoint",
-    )
-    @action(
-        detail=False,
-        methods=["put"],
-        description="updating address",
-        url_path="update_address",
-    )
+
     def update_address(self, request, *args, **kwargs):
         context = {"status": status.HTTP_200_OK}
         try:

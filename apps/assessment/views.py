@@ -28,13 +28,11 @@ class AssessmentViewSet(BaseViewSet):
 
     def get_queryset(self):
         """Override to filter assessments for the current user."""
-        # Ensure user is authenticated before filtering
         if self.request.user.is_authenticated:
             return self.queryset.filter(
-            Q(patient=self.request.user) | Q(practitioner=self.request.user)
-        )
+                Q(patient=self.request.user) | Q(practitioner=self.request.user)
+            )
         else:
-            # Return an empty queryset or handle appropriately
             return Assessment.objects.none() 
         
 
@@ -132,7 +130,6 @@ class AssessmentViewSet(BaseViewSet):
         """List all questions for a specific assessment."""
         assessment = self.get_object()
         
-        # Assuming each question is linked to an AssessmentType
         questions = Question.objects.filter(assessment_type=assessment.assessment_type)
         
         serializer = QuestionSerializer(questions, many=True)
@@ -159,6 +156,113 @@ class AssessmentViewSet(BaseViewSet):
         return Response({"errors": serializer.errors, "status": status.HTTP_400_BAD_REQUEST}, status=status.HTTP_400_BAD_REQUEST)
 
     @swagger_auto_schema(
+        method='get',
+        operation_summary="List answers for a question",
+        operation_description="Retrieve all answers for a specific question.",
+        manual_parameters=[
+            openapi.Parameter(
+                'question_id', openapi.IN_PATH, 
+                description="ID of the question", 
+                type=openapi.TYPE_INTEGER
+            )
+        ]
+    )
+    @swagger_auto_schema(
+        method='post',
+        operation_summary="Create answer for a question",
+        operation_description="Create a new answer for a specific question.",
+        request_body=AnswerSerializer
+    )
+    @action(detail=True, methods=["get", "post"], url_path="questions/(?P<question_id>[^/.]+)/answers", description="Manage answers for a question")
+    def manage_answers(self, request, *args, **kwargs):
+        """List or create answers for a specific question."""
+        question_id = kwargs.get('question_id')
+        question = get_object_or_404(Question, pk=question_id)
+
+        if request.method == "GET":
+            answers = Answer.objects.filter(question=question)
+            serializer = AnswerSerializer(answers, many=True)
+            return Response({"status": status.HTTP_200_OK, "data": serializer.data}, status=status.HTTP_200_OK)
+
+        elif request.method == "POST":
+            serializer = AnswerSerializer(data=request.data)
+            if serializer.is_valid():
+                answer = serializer.save(question=question)
+                logger.info(f"Create answer: {request.user} created answer {answer.id} for question {question.id}.")
+                return Response({"status": status.HTTP_201_CREATED, "data": serializer.data, "message": "Answer created successfully"}, status=status.HTTP_201_CREATED)
+
+            logger.error(f"Create answer failed: {request.user} attempted to create an answer with invalid data: {serializer.errors}.")
+            return Response({"errors": serializer.errors, "status": status.HTTP_400_BAD_REQUEST}, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
+        method='put',
+        operation_summary="Update an answer",
+        operation_description="Update an existing answer for a specific question.",
+        request_body=AnswerSerializer,
+        manual_parameters=[
+            openapi.Parameter(
+                'question_id', openapi.IN_PATH, 
+                description="ID of the question", 
+                type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'answer_id', openapi.IN_PATH, 
+                description="ID of the answer", 
+                type=openapi.TYPE_INTEGER
+            )
+        ]
+    )
+    @action(detail=True, methods=["put"], url_path="questions/(?P<question_id>[^/.]+)/answers/(?P<answer_id>[^/.]+)", description="Update an answer for a question")
+    def update_answer(self, request, *args, **kwargs):
+        """Update an existing answer for a specific question."""
+        question_id = kwargs.get('question_id')
+        answer_id = kwargs.get('answer_id')
+
+        question = get_object_or_404(Question, pk=question_id)
+        answer = get_object_or_404(Answer, pk=answer_id, question=question)
+
+        serializer = AnswerSerializer(answer, data=request.data, partial=True)
+        if serializer.is_valid():
+            answer = serializer.save()
+            logger.info(f"Update answer: {request.user} updated answer {answer.id} for question {question.id}.")
+            return Response({"status": status.HTTP_200_OK, "data": serializer.data, "message": "Answer updated successfully"}, status=status.HTTP_200_OK)
+
+        logger.error(f"Update answer failed: {request.user} attempted to update answer {answer.id} with invalid data: {serializer.errors}.")
+        return Response({"errors": serializer.errors, "status": status.HTTP_400_BAD_REQUEST}, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
+        method='delete',
+        operation_summary="Delete an answer",
+        operation_description="Delete a specific answer for a question within an assessment.",
+        manual_parameters=[
+            openapi.Parameter(
+                'question_id', openapi.IN_PATH, 
+                description="ID of the question", 
+                type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'answer_id', openapi.IN_PATH, 
+                description="ID of the answer", 
+                type=openapi.TYPE_INTEGER
+            )
+        ]
+    )
+    @action(detail=True, methods=["delete"], url_path="questions/(?P<question_id>[^/.]+)/answers/(?P<answer_id>[^/.]+)", description="Delete an answer for a question")
+    def delete_answer(self, request, *args, **kwargs):
+        """Delete an existing answer for a specific question."""
+        question_id = kwargs.get('question_id')
+        answer_id = kwargs.get('answer_id')
+
+        question = get_object_or_404(Question, pk=question_id)
+        answer = get_object_or_404(Answer, pk=answer_id, question=question)
+
+        answer.delete()
+        logger.info(f"Delete answer: {request.user} deleted answer {answer.id} for question {question.id}.")
+        return Response({"status": status.HTTP_204_NO_CONTENT, "message": "Answer deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+    
+
+
+    @swagger_auto_schema(
         operation_summary="List all assessment types",
         operation_description="Retrieve a list of available assessment types.",
         responses={200: openapi.Response("Success", AssessmentTypeSerializer(many=True))}
@@ -172,6 +276,7 @@ class AssessmentViewSet(BaseViewSet):
         return Response({"status": status.HTTP_200_OK, "data": serializer.data}, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
+        method="post",
         request_body=AssessmentTypeSerializer,
         operation_summary="Create a new assessment type",
         operation_description="Create a new type of assessment.",
