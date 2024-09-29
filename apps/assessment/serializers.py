@@ -34,15 +34,19 @@ class AnswerSerializer(serializers.ModelSerializer):
         fields = ["id", "question", "text"]
 
 
-class QuestionAndAnswer(serializers.Serializer):
-    """Serializer for AssessmentResult model."""
+class QuestionAndAnswerSerializer(serializers.Serializer):
+    """Serializer for question and answer pairs in Assessment results."""
 
-    question = serializers.CharField(max_length=1000, required=True)
-    answer = serializers.CharField(max_length=1000, required=False)
+    question = serializers.PrimaryKeyRelatedField(
+        queryset=Question.objects.all(), required=True
+    )
+    answer = serializers.PrimaryKeyRelatedField(
+        queryset=Answer.objects.all(), required=False
+    )
 
 
 class AssessmentResultSerializer(serializers.ModelSerializer):
-    """Serializer for AssessmentResult model."""
+    """Serializer for AssessmentResult model, showing related questions and answers."""
 
     question = QuestionSerializer(read_only=True)
     answer = AnswerSerializer(read_only=True)
@@ -53,7 +57,7 @@ class AssessmentResultSerializer(serializers.ModelSerializer):
 
 
 class AssessmentSerializer(serializers.ModelSerializer):
-    """Serializer for Assessment model."""
+    """Serializer for Assessment model, including related patient and results."""
 
     patient = UserMiniSerializer(read_only=True)
     assessment_type = AssessmentTypeSerializer(read_only=True)
@@ -72,9 +76,9 @@ class AssessmentSerializer(serializers.ModelSerializer):
 
 
 class CreateAssessmentSerializer(serializers.ModelSerializer):
-    """Serializer for creating an Assessment with results."""
+    """Serializer for creating an Assessment with associated results."""
 
-    results = QuestionAndAnswer(many=True, required=False)
+    results = QuestionAndAnswerSerializer(many=True, required=False)
 
     class Meta:
         model = Assessment
@@ -87,12 +91,12 @@ class CreateAssessmentSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-        results_data = validated_data.pop("results")
+        results_data = validated_data.pop("results", [])
         assessment = Assessment.objects.create(**validated_data)
 
         for result in results_data:
             question = get_object_or_404(Question, pk=result["question"])
-            answer = get_object_or_404(Answer, pk=result["answer"])
+            answer = get_object_or_404(Answer, pk=result.get("answer"))
             AssessmentResult.objects.create(
                 assessment=assessment, question=question, answer=answer
             )
@@ -100,21 +104,20 @@ class CreateAssessmentSerializer(serializers.ModelSerializer):
         return assessment
 
     def update(self, instance, validated_data):
-        """Method to update assessment and its results."""
+        """Method to update an assessment and its associated results."""
         results_data = validated_data.pop("results", None)
         instance.final_score = validated_data.get(
             "final_score", instance.final_score
         )
         instance.save()
 
-        if results_data:
-            # Delete all previous results and create new ones.
+        if results_data is not None:
             AssessmentResult.objects.filter(assessment=instance).delete()
             for result in results_data:
                 question = get_object_or_404(
                     Question, pk=result["question"]
                 )
-                answer = get_object_or_404(Answer, pk=result["answer"])
+                answer = get_object_or_404(Answer, pk=result.get("answer"))
                 AssessmentResult.objects.create(
                     assessment=instance, question=question, answer=answer
                 )

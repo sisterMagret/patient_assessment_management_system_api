@@ -236,7 +236,15 @@ LOGGING = {
             "formatter": "standard",
             "maxBytes": 104857600,
         },
+        "assessment_handler": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOGS_DIR, "assessment.log"),
+            "formatter": "standard",
+            "maxBytes": 104857600,
+        },
     },
+    
     "loggers": {
         "consumer": {
             "handlers": ["console"],
@@ -244,6 +252,11 @@ LOGGING = {
         },
         "user": {
             "handlers": ["user_handler"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        "assessment": {
+            "handlers": ["assessment_handler"],
             "level": "INFO",
             "propagate": True,
         },

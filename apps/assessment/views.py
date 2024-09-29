@@ -1,3 +1,4 @@
+import logging
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
@@ -20,12 +21,18 @@ from apps.utils.permissions import (
 )
 
 
+logger = logging.getLogger("assessment")
+
+
 class AssessmentViewSet(BaseViewSet):
     serializer_class = AssessmentSerializer
     queryset = Assessment.objects.all()
 
     def get_queryset(self):
-        return self.queryset
+        return self.queryset.filter(
+            Q(patient=self.request.user)
+            | Q(practitioner=self.request.user)
+        )
 
     def get_object(self):
         return get_object_or_404(Assessment, pk=self.kwargs.get("pk"))
@@ -41,22 +48,24 @@ class AssessmentViewSet(BaseViewSet):
     )
     @method_decorator(practitioner_access_only(), name="dispatch")
     def list(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_200_OK}
+        context = {}
         try:
             paginate = self.get_paginated_data(
-                queryset=self.get_queryset().filter(
-                    Q(patient=self.request.user)
-                    | Q(practitioner=self.request.user)
-                ),
+                queryset=self.get_queryset(),
                 serializer_class=self.serializer_class,
             )
-            context.update({"data": paginate})
+            context.update(
+                {"status": status.HTTP_200_OK, "data": paginate}
+            )
+            logger.info(
+            f"List assessments: {request.user} retrieved {self.get_queryset().count()} assessments."
+        )
         except Exception as ex:
             context.update(
                 {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
             )
         return Response(context, status=context["status"])
-
+    
     @swagger_auto_schema(
         operation_summary="Retrieve assessment details",
         operation_description="Retrieve a specific assessment by ID.",
@@ -64,15 +73,15 @@ class AssessmentViewSet(BaseViewSet):
     )
     @method_decorator(practitioner_access_only(), name="dispatch")
     def retrieve(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_200_OK}
-        try:
-            instance = self.get_object()
-            context.update({"data": self.serializer_class(instance).data})
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
+        instance = self.get_object()
+        serializer = self.serializer_class(instance)
+        logger.info(
+            f"Retrieve assessment: {request.user} accessed assessment {instance.id}."
+        )
+        return Response(
+            {"status": status.HTTP_200_OK, "data": serializer.data},
+            status=status.HTTP_200_OK,
+        )
 
     @swagger_auto_schema(
         request_body=CreateAssessmentSerializer,
@@ -82,32 +91,30 @@ class AssessmentViewSet(BaseViewSet):
     )
     @method_decorator(practitioner_access_only(), name="dispatch")
     def create(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_201_CREATED}
-        try:
-            data = self.get_data(request)
-            serializer = CreateAssessmentSerializer(data=data)
-            if serializer.is_valid():
-                assessment = serializer.save()
-                assessment.practitioner = request.user
-                assessment.save()
-                context.update(
-                    {
-                        "data": self.serializer_class(assessment).data,
-                        "message": "Assessment created successfully",
-                    }
-                )
-            else:
-                context.update(
-                    {
-                        "errors": serializer.errors,
-                        "status": status.HTTP_400_BAD_REQUEST,
-                    }
-                )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
+        serializer = CreateAssessmentSerializer(data=request.data)
+        if serializer.is_valid():
+            assessment = serializer.save(practitioner=request.user)
+            logger.info(
+                f"Create assessment: {request.user} created assessment {assessment.id}."
             )
-        return Response(context, status=context["status"])
+            return Response(
+                {
+                    "status": status.HTTP_201_CREATED,
+                    "data": self.serializer_class(assessment).data,
+                    "message": "Assessment created successfully",
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        logger.error(
+            f"Create assessment failed: {request.user} attempted to create an assessment with invalid data: {serializer.errors}."
+        )
+        return Response(
+            {
+                "errors": serializer.errors,
+                "status": status.HTTP_400_BAD_REQUEST,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     @swagger_auto_schema(
         request_body=CreateAssessmentSerializer,
@@ -117,51 +124,53 @@ class AssessmentViewSet(BaseViewSet):
     )
     @method_decorator(practitioner_access_only(), name="dispatch")
     def update(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_200_OK}
-        try:
-            instance = self.get_object()
-            data = self.get_data(request)
-            serializer = CreateAssessmentSerializer(
-                instance, data=data, partial=True
+        instance = self.get_object()
+        serializer = CreateAssessmentSerializer(
+            instance, data=request.data, partial=True
+        )
+        if serializer.is_valid():
+            assessment = serializer.save()
+            logger.info(
+                f"Update assessment: {request.user} updated assessment {assessment.id}."
             )
-            if serializer.is_valid():
-                assessment = serializer.save()
-                context.update(
-                    {
-                        "data": self.serializer_class(assessment).data,
-                        "message": "Assessment updated successfully",
-                    }
-                )
-            else:
-                context.update(
-                    {
-                        "errors": serializer.errors,
-                        "status": status.HTTP_400_BAD_REQUEST,
-                    }
-                )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
+            return Response(
+                {
+                    "status": status.HTTP_200_OK,
+                    "data": self.serializer_class(assessment).data,
+                    "message": "Assessment updated successfully",
+                },
+                status=status.HTTP_200_OK,
             )
-        return Response(context, status=context["status"])
+        logger.error(
+            f"Update assessment failed: {request.user} attempted to update assessment {instance.id} with invalid data: {serializer.errors}."
+        )
+        return Response(
+            {
+                "errors": serializer.errors,
+                "status": status.HTTP_400_BAD_REQUEST,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     @swagger_auto_schema(operation_summary="Delete an assessment")
     @method_decorator(practitioner_access_only(), name="dispatch")
     def destroy(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_204_NO_CONTENT}
-        try:
-            instance = self.get_object()
-            instance.delete()
-            context.update({"message": "Assessment deleted successfully"})
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
+        instance = self.get_object()
+        instance.delete()
+        logger.info(
+            f"Delete assessment: {request.user} deleted assessment {instance.id}."
+        )
+        return Response(
+            {
+                "status": status.HTTP_204_NO_CONTENT,
+                "message": "Assessment deleted successfully",
+            },
+            status=status.HTTP_204_NO_CONTENT,
+        )
 
     @swagger_auto_schema(
         operation_summary="List assessment questions",
-        operation_description="List the questions and answers for a given assessment.",
+        operation_description="List the questions for a given assessment.",
         responses={
             200: openapi.Response("Success", QuestionSerializer(many=True))
         },
@@ -173,18 +182,16 @@ class AssessmentViewSet(BaseViewSet):
         description="List all questions in an assessment",
     )
     def list_questions(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_200_OK}
-        try:
-            assessment = self.get_object()
-            questions = Question.objects.filter(assessment=assessment)
-            context.update(
-                {"data": QuestionSerializer(questions, many=True).data}
-            )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
+        assessment = self.get_object()
+        questions = Question.objects.filter(assessment=assessment)
+        serializer = QuestionSerializer(questions, many=True)
+        logger.info(
+            f"List questions: {request.user} retrieved questions for assessment {assessment.id}."
+        )
+        return Response(
+            {"status": status.HTTP_200_OK, "data": serializer.data},
+            status=status.HTTP_200_OK,
+        )
 
     @swagger_auto_schema(
         request_body=QuestionSerializer,
@@ -200,32 +207,31 @@ class AssessmentViewSet(BaseViewSet):
     )
     @method_decorator(practitioner_access_only(), name="dispatch")
     def add_question(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_201_CREATED}
-        try:
-            assessment = self.get_object()
-            data = self.get_data(request)
-            data["assessment"] = assessment.id
-            serializer = QuestionSerializer(data=data)
-            if serializer.is_valid():
-                question = serializer.save()
-                context.update(
-                    {
-                        "data": serializer.data,
-                        "message": "Question added successfully",
-                    }
-                )
-            else:
-                context.update(
-                    {
-                        "errors": serializer.errors,
-                        "status": status.HTTP_400_BAD_REQUEST,
-                    }
-                )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
+        assessment = self.get_object()
+        serializer = QuestionSerializer(data=request.data)
+        if serializer.is_valid():
+            question = serializer.save(assessment=assessment)
+            logger.info(
+                f"Add question: {request.user} added question {question.id} to assessment {assessment.id}."
             )
-        return Response(context, status=context["status"])
+            return Response(
+                {
+                    "status": status.HTTP_201_CREATED,
+                    "data": serializer.data,
+                    "message": "Question added successfully",
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        logger.error(
+            f"Add question failed: {request.user} attempted to add a question to assessment {assessment.id} with invalid data: {serializer.errors}."
+        )
+        return Response(
+            {
+                "errors": serializer.errors,
+                "status": status.HTTP_400_BAD_REQUEST,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     @swagger_auto_schema(
         operation_summary="List all assessment types",
@@ -243,22 +249,15 @@ class AssessmentViewSet(BaseViewSet):
         description="List all assessment types",
     )
     def list_assessment_types(self, request, *args, **kwargs):
-        """List all available assessment types"""
-        context = {"status": status.HTTP_200_OK}
-        try:
-            assessment_types = AssessmentType.objects.all()
-            context.update(
-                {
-                    "data": AssessmentTypeSerializer(
-                        assessment_types, many=True
-                    ).data
-                }
-            )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
+        assessment_types = AssessmentType.objects.all()
+        serializer = AssessmentTypeSerializer(assessment_types, many=True)
+        logger.info(
+            f"List assessment types: {request.user} retrieved all assessment types."
+        )
+        return Response(
+            {"status": status.HTTP_200_OK, "data": serializer.data},
+            status=status.HTTP_200_OK,
+        )
 
     @swagger_auto_schema(
         request_body=AssessmentTypeSerializer,
@@ -276,31 +275,30 @@ class AssessmentViewSet(BaseViewSet):
     )
     @method_decorator(practitioner_access_only(), name="dispatch")
     def create_assessment_type(self, request, *args, **kwargs):
-        """Create a new assessment type"""
-        context = {"status": status.HTTP_201_CREATED}
-        try:
-            data = request.data
-            serializer = AssessmentTypeSerializer(data=data)
-            if serializer.is_valid():
-                assessment_type = serializer.save()
-                context.update(
-                    {
-                        "data": serializer.data,
-                        "message": "Assessment type created successfully",
-                    }
-                )
-            else:
-                context.update(
-                    {
-                        "errors": serializer.errors,
-                        "status": status.HTTP_400_BAD_REQUEST,
-                    }
-                )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
+        serializer = AssessmentTypeSerializer(data=request.data)
+        if serializer.is_valid():
+            assessment_type = serializer.save()
+            logger.info(
+                f"Create assessment type: {request.user} created assessment type {assessment_type.id}."
             )
-        return Response(context, status=context["status"])
+            return Response(
+                {
+                    "status": status.HTTP_201_CREATED,
+                    "data": serializer.data,
+                    "message": "Assessment type created successfully",
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        logger.error(
+            f"Create assessment type failed: {request.user} attempted to create assessment type with invalid data: {serializer.errors}."
+        )
+        return Response(
+            {
+                "errors": serializer.errors,
+                "status": status.HTTP_400_BAD_REQUEST,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     @swagger_auto_schema(
         operation_summary="Delete an assessment type",
@@ -317,309 +315,46 @@ class AssessmentViewSet(BaseViewSet):
     def delete_assessment_type(
         self, request, type_id=None, *args, **kwargs
     ):
-        """Delete an assessment type"""
-        context = {"status": status.HTTP_204_NO_CONTENT}
-        try:
-            assessment_type = AssessmentType.objects.get(id=type_id)
-            assessment_type.delete()
-            context.update(
-                {"message": "Assessment type deleted successfully"}
-            )
-        except AssessmentType.DoesNotExist:
-            context.update(
-                {
-                    "status": status.HTTP_404_NOT_FOUND,
-                    "message": "Assessment type not found",
-                }
-            )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
+        assessment_type = get_object_or_404(AssessmentType, id=type_id)
+        assessment_type.delete()
+        logger.info(
+            f"Delete assessment type: {request.user} deleted assessment type {type_id}."
+        )
+        return Response(
+            {
+                "status": status.HTTP_204_NO_CONTENT,
+                "message": "Assessment type deleted successfully",
+            },
+            status=status.HTTP_204_NO_CONTENT,
+        )
 
     @swagger_auto_schema(
-        request_body=AssessmentTypeSerializer,
-        operation_summary="Update an assessment type",
-        operation_description="Update an existing assessment type by ID.",
-        responses={
-            200: openapi.Response("Success", AssessmentTypeSerializer)
-        },
-    )
-    @action(
-        detail=True,
-        methods=["put"],
-        url_path="types/(?P<type_id>[^/.]+)",
-        description="Update an assessment type",
-    )
-    @method_decorator(practitioner_access_only(), name="dispatch")
-    def update_assessment_type(
-        self, request, type_id=None, *args, **kwargs
-    ):
-        """Update an existing assessment type"""
-        context = {"status": status.HTTP_200_OK}
-        try:
-            assessment_type = AssessmentType.objects.get(id=type_id)
-            serializer = AssessmentTypeSerializer(
-                assessment_type, data=request.data, partial=True
-            )
-            if serializer.is_valid():
-                assessment_type = serializer.save()
-                context.update(
-                    {
-                        "data": serializer.data,
-                        "message": "Assessment type updated successfully",
-                    }
-                )
-            else:
-                context.update(
-                    {
-                        "errors": serializer.errors,
-                        "status": status.HTTP_400_BAD_REQUEST,
-                    }
-                )
-        except AssessmentType.DoesNotExist:
-            context.update(
-                {
-                    "status": status.HTTP_404_NOT_FOUND,
-                    "message": "Assessment type not found",
-                }
-            )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
-
-    @swagger_auto_schema(
-        operation_summary="List questions and answers for an assessment",
-        operation_description="Retrieve the list of questions and their answers for a specific assessment.",
-        responses={
-            200: openapi.Response("Success", QuestionSerializer(many=True))
-        },
+        operation_summary="List assessment questions and answers",
+        operation_description="Retrieve questions and their answers for a specific assessment.",
+        responses={200: "Success"},
     )
     @action(
         detail=True,
         methods=["get"],
-        url_path="questions-and-answers",
-        description="List all questions and answers for an assessment",
+        url_path="questions-answers",
+        description="List questions and their answers in an assessment",
     )
-    def list_questions_and_answers(self, request, *args, **kwargs):
-        """List all questions and answers for the assessment"""
-        context = {"status": status.HTTP_200_OK}
-        try:
-            assessment = self.get_object()
-            questions = Question.objects.filter(assessment=assessment)
-            data = []
-            for question in questions:
-                question_data = QuestionSerializer(question).data
-                answer = Answer.objects.filter(question=question).first()
-                if answer:
-                    question_data["answer"] = AnswerSerializer(answer).data
-                else:
-                    question_data["answer"] = None
-                data.append(question_data)
-            context.update({"data": data})
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
-
-    @swagger_auto_schema(
-        request_body=AnswerSerializer,
-        operation_summary="Submit an answer to a question",
-        operation_description="Submit an answer for a specific question within an assessment.",
-        responses={201: openapi.Response("Created", AnswerSerializer)},
-    )
-    @action(
-        detail=True,
-        methods=["post"],
-        url_path="questions/(?P<question_id>[^/.]+)/answer",
-        description="Submit an answer for a question",
-    )
-    def submit_answer(self, request, question_id=None, *args, **kwargs):
-        """Submit an answer to a question"""
-        context = {"status": status.HTTP_201_CREATED}
-        try:
-            question = Question.objects.get(id=question_id)
-            data = request.data
-            data["question"] = question.id
-            serializer = AnswerSerializer(data=data)
-            if serializer.is_valid():
-                answer = serializer.save()
-                context.update(
-                    {
-                        "data": serializer.data,
-                        "message": "Answer submitted successfully",
-                    }
-                )
-            else:
-                context.update(
-                    {
-                        "errors": serializer.errors,
-                        "status": status.HTTP_400_BAD_REQUEST,
-                    }
-                )
-        except Question.DoesNotExist:
-            context.update(
-                {
-                    "status": status.HTTP_404_NOT_FOUND,
-                    "message": "Question not found",
-                }
-            )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
-
-    @swagger_auto_schema(
-        request_body=AnswerSerializer,
-        operation_summary="Update an answer to a question",
-        operation_description="Update an existing answer for a specific question within an assessment.",
-        responses={200: openapi.Response("Success", AnswerSerializer)},
-    )
-    @action(
-        detail=True,
-        methods=["put"],
-        url_path="questions/(?P<question_id>[^/.]+)/answer",
-        description="Update an answer for a question",
-    )
-    @method_decorator(practitioner_access_only(), name="dispatch")
-    def update_answer(self, request, question_id=None, *args, **kwargs):
-        """Update an existing answer for a question"""
-        context = {"status": status.HTTP_200_OK}
-        try:
-            question = Question.objects.get(id=question_id)
-            answer = Answer.objects.filter(question=question).first()
-            if not answer:
-                context.update(
-                    {
-                        "status": status.HTTP_404_NOT_FOUND,
-                        "message": "Answer not found",
-                    }
-                )
-            else:
-                serializer = AnswerSerializer(
-                    answer, data=request.data, partial=True
-                )
-                if serializer.is_valid():
-                    answer = serializer.save()
-                    context.update(
-                        {
-                            "data": serializer.data,
-                            "message": "Answer updated successfully",
-                        }
-                    )
-                else:
-                    context.update(
-                        {
-                            "errors": serializer.errors,
-                            "status": status.HTTP_400_BAD_REQUEST,
-                        }
-                    )
-        except Question.DoesNotExist:
-            context.update(
-                {
-                    "status": status.HTTP_404_NOT_FOUND,
-                    "message": "Question not found",
-                }
-            )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
-
-    # Create a new question and answer for an assessment
-    @swagger_auto_schema(
-        method="post",
-        request_body=QuestionSerializer,
-        operation_summary="Create a new question and answer",
-        operation_description="Create a new question and answer for an assessment.",
-        responses={201: openapi.Response("Created", QuestionSerializer)},
-    )
-    @action(
-        detail=True,
-        methods=["post"],
-        url_path="questions",
-        description="Create a new question in an assessment",
-    )
-    @method_decorator(practitioner_access_only(), name="dispatch")
-    def create_question(self, request, *args, **kwargs):
+    def list_questions_answers(self, request, *args, **kwargs):
         assessment = self.get_object()
-        data = self.get_data(request)
-        data["assessment"] = assessment.id
-        serializer = QuestionSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                serializer.data, status=status.HTTP_201_CREATED
-            )
-        return Response(
-            serializer.errors, status=status.HTTP_400_BAD_REQUEST
+        questions = Question.objects.filter(assessment=assessment)
+        questions_with_answers = [
+            {
+                "question": QuestionSerializer(question).data,
+                "answers": AnswerSerializer(
+                    Answer.objects.filter(question=question), many=True
+                ).data,
+            }
+            for question in questions
+        ]
+        logger.info(
+            f"List questions and answers: {request.user} retrieved questions and answers for assessment {assessment.id}."
         )
-
-    # Update a question in an assessment
-    @swagger_auto_schema(
-        method="put",
-        request_body=QuestionSerializer,
-        operation_summary="Update a question and answer",
-        operation_description="Update an existing question and answer for an assessment.",
-        responses={200: openapi.Response("Success", QuestionSerializer)},
-    )
-    @action(
-        detail=True,
-        methods=["put"],
-        url_path="questions/(?P<question_id>[^/.]+)",
-        description="Update a question",
-    )
-    @method_decorator(practitioner_access_only(), name="dispatch")
-    def update_question(self, request, question_id=None, *args, **kwargs):
-        try:
-            question = Question.objects.get(
-                id=question_id, assessment=self.get_object()
-            )
-            serializer = QuestionSerializer(
-                question, data=request.data, partial=True
-            )
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            return Response(
-                serializer.errors, status=status.HTTP_400_BAD_REQUEST
-            )
-        except Question.DoesNotExist:
-            return Response(
-                {"detail": "Question not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-    # Delete a question in an assessment
-    @swagger_auto_schema(
-        operation_summary="Delete a question",
-        operation_description="Delete a question and its answer from an assessment.",
-    )
-    @action(
-        detail=True,
-        methods=["delete"],
-        url_path="questions/(?P<question_id>[^/.]+)",
-        description="Delete a question",
-    )
-    @method_decorator(practitioner_access_only(), name="dispatch")
-    def delete_question(self, request, question_id=None, *args, **kwargs):
-        try:
-            question = Question.objects.get(
-                id=question_id, assessment=self.get_object()
-            )
-            question.delete()
-            return Response(
-                {"detail": "Question deleted"},
-                status=status.HTTP_204_NO_CONTENT,
-            )
-        except Question.DoesNotExist:
-            return Response(
-                {"detail": "Question not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        return Response(
+            {"status": status.HTTP_200_OK, "data": questions_with_answers},
+            status=status.HTTP_200_OK,
+        )
