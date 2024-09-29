@@ -1,84 +1,71 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from apps.utils.abstracts import AbstractUUID
+from apps.utils.abstracts import AbstractUUID, TimeStampedModel
+
+User = get_user_model()
 
 
-class AssessmentType(AbstractUUID):
-    """Model to represent different types of assessments"""
 
-    name = models.CharField(max_length=255, unique=True)
-    description = models.TextField(null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+class AssessmentType(AbstractUUID, TimeStampedModel):
+    """Stores types of assessments (e.g., Cognitive Test, Physical Exam)"""
+    name = models.CharField(max_length=255)
+    description = models.CharField(max_length=255)
 
     def __str__(self):
-        return self.name
+        return f"{self.name}"
+    
 
-
-class Question(AbstractUUID):
-    """Model to represent individual questions in assessments."""
-
+class Question(AbstractUUID, TimeStampedModel):
+    """Defines individual questions for assessments."""
     text = models.TextField()
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    assessment_type = models.ForeignKey(AssessmentType, on_delete=models.CASCADE, related_name="questions")
 
     def __str__(self):
-        return self.text
+        return f"Question: {self.text}"
 
 
-class Answer(AbstractUUID):
-    """Model to represent answers to assessment questions."""
-
-    question = models.ForeignKey(
-        Question, on_delete=models.CASCADE, related_name="answers"
-    )
+class Answer(AbstractUUID, TimeStampedModel):
+    """Represents possible answers to questions, with a boolean flag to denote the correct answer."""
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="answers")
     text = models.TextField()
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    is_correct = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"Answer to: {self.question}"
+        return f"Answer: {self.text} (Correct: {self.is_correct})"
 
 
-class Assessment(AbstractUUID):
-    """Model to represent an assessment instance."""
+class Assessment(AbstractUUID, TimeStampedModel):
+    """Represents an assessment instance, linking practitioners, patients, and types."""
+    practitioner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="practitioner_assessments")
+    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name="patient_assessments")
+    assessment_type = models.ForeignKey(AssessmentType, on_delete=models.CASCADE)
+    date = models.DateTimeField(default=timezone.now)
+    final_score = models.IntegerField(default=0)  # This could be dynamically calculated based on results.
 
-    practitioner = models.ForeignKey(
-        get_user_model(), on_delete=models.CASCADE
-    )
-    assessment_type = models.ForeignKey(
-        AssessmentType,
-        on_delete=models.CASCADE,
-        related_name="assessments",
-    )
-    patient = models.ForeignKey(
-        get_user_model(),
-        on_delete=models.CASCADE,
-        related_name="assessments",
-    )
-    date = models.DateField(default=timezone.now)
-    final_score = models.FloatField(null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    def calculate_final_score(self):
+        """Calculate the final score based on correct answers in AssessmentResult."""
+        correct_answers = self.results.filter(answer__is_correct=True).count()
+        total_questions = self.results.count()
+        if total_questions == 0:
+            return 0
+        return int((correct_answers / total_questions) * 100)
 
-    class Meta:
-        ordering = ["-date"]
+    def save(self, *args, **kwargs):
+        """Override save method to calculate final score before saving."""
+        self.final_score = self.calculate_final_score()
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Assessment for {self.patient} on {self.date}"
+        return f"Assessment ({self.assessment_type}) by {self.practitioner} for {self.patient} on {self.date}"
 
 
-class AssessmentResult(AbstractUUID):
-    """Model to store the relationship between assessment questions and answers."""
-
-    assessment = models.ForeignKey(
-        Assessment, on_delete=models.CASCADE, related_name="results"
-    )
+class AssessmentResult(AbstractUUID, TimeStampedModel):
+    """Stores the results for each question within an assessment."""
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name="results")
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     answer = models.ForeignKey(Answer, on_delete=models.CASCADE)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.assessment} - {self.question}"
+        return f"Result: {self.assessment} - Question: {self.question}"
+

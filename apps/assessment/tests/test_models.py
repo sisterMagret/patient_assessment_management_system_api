@@ -10,20 +10,17 @@ from ..models import (
 
 User = get_user_model()
 
-
 class AssessmentModelsTests(TestCase):
     def setUp(self):
         # Create a user for testing
         self.user = User.objects.create_user(
-            **{
-                "first_name": "Uncle",
-                "last_name": "Rukus",
-                "phone_number": "1234567890",
-                "email": "sistermagret007@gmail.com",
-                "username": "sistermagret007@gmail.com",
-                "password": "password123",
-                "is_accept_terms_and_condition": True,
-            }
+            first_name="Uncle",
+            last_name="Rukus",
+            phone_number="1234567890",
+            email="sistermagret007@gmail.com",
+            username="sistermagret007@gmail.com",
+            password="password123",
+            is_accept_terms_and_condition=True,
         )
 
         # Create an AssessmentType instance
@@ -34,7 +31,8 @@ class AssessmentModelsTests(TestCase):
 
         # Create a Question instance
         self.question = Question.objects.create(
-            text="How do you feel today?"
+            text="How do you feel today?",
+            assessment_type=self.assessment_type,  # Ensure it's linked to the assessment type
         )
 
         # Create an Answer instance
@@ -59,19 +57,19 @@ class AssessmentModelsTests(TestCase):
 
     def test_question_str(self):
         """Test the string representation of Question."""
-        self.assertEqual(str(self.question), "How do you feel today?")
+        self.assertEqual(str(self.question), "Question: How do you feel today?")
 
     def test_answer_str(self):
         """Test the string representation of Answer."""
         self.assertEqual(
-            str(self.answer), "Answer to: How do you feel today?"
+            str(self.answer), f"Answer: {self.answer.text} (Correct: {self.answer.is_correct})"
         )
 
     def test_assessment_str(self):
         """Test the string representation of Assessment."""
         self.assertEqual(
             str(self.assessment),
-            f"Assessment for {self.user} on 2024-09-29",
+            f"Assessment ({self.assessment.assessment_type}) by {self.assessment.practitioner} for {self.assessment.patient} on {self.assessment.date}",
         )
 
     def test_assessment_result_creation(self):
@@ -93,14 +91,14 @@ class AssessmentModelsTests(TestCase):
             answer=self.answer,
         )
         self.assertEqual(
-            str(result), f"{self.assessment} - {self.question}"
+            str(result), f"Result: {self.assessment} - Question: {self.question}"
         )
 
     def tearDown(self):
         # Clean up any created instances if necessary
+        User.objects.all().delete()
         AssessmentType.objects.all().delete()
         Question.objects.all().delete()
         Answer.objects.all().delete()
         Assessment.objects.all().delete()
         AssessmentResult.objects.all().delete()
-        User.objects.all().delete()

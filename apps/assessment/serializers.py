@@ -1,125 +1,109 @@
-from django.shortcuts import get_object_or_404
 from rest_framework import serializers
-from apps.users.serializer import UserMiniSerializer
-from .models import (
-    AssessmentType,
-    Question,
-    Answer,
-    Assessment,
-    AssessmentResult,
-)
-
-
-class AssessmentTypeSerializer(serializers.ModelSerializer):
-    """Serializer for AssessmentType model."""
-
-    class Meta:
-        model = AssessmentType
-        fields = ["id", "name", "description"]
-
-
-class QuestionSerializer(serializers.ModelSerializer):
-    """Serializer for Question model."""
-
-    class Meta:
-        model = Question
-        fields = ["id", "text"]
+from .models import Assessment, AssessmentType, Question, Answer, AssessmentResult
 
 
 class AnswerSerializer(serializers.ModelSerializer):
-    """Serializer for Answer model."""
-
     class Meta:
         model = Answer
-        fields = ["id", "question", "text"]
+        fields = ['id', 'text', 'is_correct']
 
 
-class QuestionAndAnswerSerializer(serializers.Serializer):
-    """Serializer for question and answer pairs in Assessment results."""
+class QuestionSerializer(serializers.ModelSerializer):
+    answers = AnswerSerializer(many=True, read_only=True)
 
-    question = serializers.PrimaryKeyRelatedField(
-        queryset=Question.objects.all(), required=True
-    )
-    answer = serializers.PrimaryKeyRelatedField(
-        queryset=Answer.objects.all(), required=False
-    )
+    class Meta:
+        model = Question
+        fields = ['id', 'text', 'answers']
 
 
 class AssessmentResultSerializer(serializers.ModelSerializer):
-    """Serializer for AssessmentResult model, showing related questions and answers."""
-
-    question = QuestionSerializer(read_only=True)
-    answer = AnswerSerializer(read_only=True)
+    question = serializers.PrimaryKeyRelatedField(queryset=Question.objects.all())
+    answer = serializers.PrimaryKeyRelatedField(queryset=Answer.objects.all())
 
     class Meta:
         model = AssessmentResult
-        fields = ["id", "assessment", "question", "answer"]
+        fields = ['question', 'answer']
 
-
-class AssessmentSerializer(serializers.ModelSerializer):
-    """Serializer for Assessment model, including related patient and results."""
-
-    patient = UserMiniSerializer(read_only=True)
-    assessment_type = AssessmentTypeSerializer(read_only=True)
-    results = AssessmentResultSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Assessment
-        fields = [
-            "id",
-            "assessment_type",
-            "patient",
-            "date",
-            "final_score",
-            "results",
-        ]
+    def validate(self, data):
+        """
+        Validate that the provided answer belongs to the question.
+        """
+        question = data.get('question')
+        answer = data.get('answer')
+        if answer.question != question:
+            raise serializers.ValidationError("The answer does not belong to the provided question.")
+        return data
 
 
 class CreateAssessmentSerializer(serializers.ModelSerializer):
-    """Serializer for creating an Assessment with associated results."""
-
-    results = QuestionAndAnswerSerializer(many=True, required=False)
+    results = AssessmentResultSerializer(many=True)
 
     class Meta:
         model = Assessment
-        fields = [
-            "assessment_type",
-            "patient",
-            "date",
-            "final_score",
-            "results",
-        ]
+        fields = ['assessment_type', 'patient', 'results']
 
     def create(self, validated_data):
-        results_data = validated_data.pop("results", [])
+        results_data = validated_data.pop('results', [])
         assessment = Assessment.objects.create(**validated_data)
-
-        for result in results_data:
-            question = get_object_or_404(Question, pk=result["question"])
-            answer = get_object_or_404(Answer, pk=result.get("answer"))
-            AssessmentResult.objects.create(
-                assessment=assessment, question=question, answer=answer
-            )
-
+        self._handle_results(assessment, results_data)
         return assessment
 
     def update(self, instance, validated_data):
-        """Method to update an assessment and its associated results."""
-        results_data = validated_data.pop("results", None)
-        instance.final_score = validated_data.get(
-            "final_score", instance.final_score
-        )
+        results_data = validated_data.pop('results', [])
+        instance.assessment_type = validated_data.get('assessment_type', instance.assessment_type)
+        instance.patient = validated_data.get('patient', instance.patient)
         instance.save()
 
-        if results_data is not None:
-            AssessmentResult.objects.filter(assessment=instance).delete()
-            for result in results_data:
-                question = get_object_or_404(
-                    Question, pk=result["question"]
-                )
-                answer = get_object_or_404(Answer, pk=result.get("answer"))
-                AssessmentResult.objects.create(
-                    assessment=instance, question=question, answer=answer
-                )
+        # Update results by clearing old ones and creating new ones
+        instance.results.all().delete()
+        self._handle_results(instance, results_data)
 
         return instance
+
+    def _handle_results(self, assessment, results_data):
+        """
+        Handle the creation of AssessmentResult and calculation of the final score.
+        """
+        results = []
+        total_score = 0
+
+        for result_data in results_data:
+            question = result_data.get('question')
+            answer = result_data.get('answer')
+
+            # Check if the answer is correct and accumulate the score
+            if answer.is_correct:
+                total_score += 2  # Assume 2 points per correct answer
+
+            results.append(
+                AssessmentResult(
+                    assessment=assessment,
+                    question=question,
+                    answer=answer
+                )
+            )
+
+        # Bulk create the results to reduce the number of database hits
+        AssessmentResult.objects.bulk_create(results)
+
+        # Update the final score and save the assessment
+        assessment.final_score = total_score
+        assessment.save()
+
+
+class AssessmentSerializer(serializers.ModelSerializer):
+    results = AssessmentResultSerializer(many=True, read_only=True)
+    assessment_type = serializers.StringRelatedField()
+    patient = serializers.StringRelatedField()
+
+    class Meta:
+        model = Assessment
+        fields = ['id', 'assessment_type', 'patient', 'final_score', 'results', 'date']
+
+
+from rest_framework import serializers
+
+class AssessmentTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssessmentType  
+        fields = '__all__'  
