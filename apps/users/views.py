@@ -810,7 +810,7 @@ class AuthViewSet(ViewSet, Addon):
 
 class UserViewSet(BaseViewSet):
     serializer_class = UserSerializer
-    queryset = User.objects.all()
+    queryset = User.objects.select_related("address").all()
 
     def get_queryset(self):
         return self.queryset.exclude(
@@ -1043,6 +1043,132 @@ class UserViewSet(BaseViewSet):
                 {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
             )
         return Response(context, status=context["status"])
+    
+
+    @swagger_auto_schema(
+        request_body=AddressSerializer,
+        operation_description="This endpoint handles adding address",
+        operation_summary="Add address endpoint",
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        description="Create Address",
+        url_path="address",
+    )
+    def create_address(self, request, *args, **kwargs):
+        """
+        This method handles adding address
+        """
+        context = {"status": status.HTTP_201_CREATED}
+        try:
+            data = self.get_data(request)
+            serializer = self.serializer_class(data=data)
+            if serializer.is_valid():
+                instance = serializer.create(serializer.validated_data)
+                request.user.address().delete()
+                request.user.address = instance
+                request.user.save()
+                context.update(
+                    {"data": self.serializer_class(instance).data}
+                )
+            else:
+                context.update(
+                    {
+                        "status": status.HTTP_400_BAD_REQUEST,
+                        "errors": self.error_message_formatter(
+                            serializer.errors
+                        ),
+                    }
+                )
+        except Exception as ex:
+            context.update(
+                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
+            )
+        return Response(context, status=context["status"])
+
+    @swagger_auto_schema(
+        request_body=AddressSerializer,
+        operation_description="This endpoint handles updating address",
+        operation_summary="update address endpoint",
+    )
+    @action(
+        detail=False,
+        methods=["put"],
+        description="updating address",
+        url_path="address",
+    )
+    def update_address(self, request, *args, **kwargs):
+        context = {"status": status.HTTP_200_OK}
+        try:
+            data = self.get_data(request)
+            
+            serializer = self.serializer_class(data=data)
+            if serializer.is_valid():
+                instance, _ = request.user.address.get_or_create(**data)
+                _ = serializer.update(
+                    validated_data=serializer.validated_data,
+                    instance=instance,
+                )
+                request.user.address = instance
+                request.user.save()
+                context.update(
+                    {"data": self.serializer_class(self.get_object()).data}
+                )
+            else:
+                context.update(
+                    {
+                        "status": status.HTTP_400_BAD_REQUEST,
+                        "errors": self.error_message_formatter(
+                            serializer.errors
+                        ),
+                    }
+                )
+        except Exception as ex:
+            context.update(
+                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
+            )
+        return Response(context, status=context["status"])
+
+    @swagger_auto_schema(
+        operation_summary="The endpoint handles get user account"
+    )
+    @action(
+        detail=False,
+        methods=["get"],
+        description="get address",
+        url_path="address",
+    )
+    def retrieve_address(self, request, *args, **kwargs):
+        context = {"status": status.HTTP_200_OK}
+        try:
+            context.update({"data": self.serializer_class(request.user.address).data})
+        except Exception as ex:
+            context.update(
+                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
+            )
+        return Response(context, status=context["status"])
+
+    @swagger_auto_schema(
+        operation_summary="The endpoint handles removing  user account"
+    )
+    @action(
+        detail=False,
+        methods=["delete"],
+        description="updating address",
+        url_path="address",
+    )
+    def destroy_address(self, request, *args, **kwargs):
+        context = {"status": status.HTTP_204_NO_CONTENT}
+        try:
+            request.user.address.delete()
+            context.update({"message": "Deleted successfully"})
+        except Exception as ex:
+            context.update(
+                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
+            )
+        return Response(context, status=context["status"])
+
 
 
 class PractitionerViewSet(BaseViewSet):
@@ -1253,7 +1379,7 @@ class PractitionerViewSet(BaseViewSet):
                     ].id
                     for v in data
                 }
-                print(specializations)
+               
                 practitioner.specializations.set(specializations)
                 context.update({"data": "Specialization added"})
             else:
@@ -1559,127 +1685,5 @@ class PatientViewSet(BaseViewSet):
         return Response(context, status=context["status"])
 
 
-class AddressViewSet(BaseModelViewSet):
-    serializer_class = AddressSerializer
-    queryset = Address.objects.all()
 
-    def get_queryset(self):
-        return self.queryset
-
-    @swagger_auto_schema(
-        operation_description="This endpoint handles listing addresses",
-        operation_summary="User Delivery address endpoint",
-    )
-    def list(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_200_OK}
-        try:
-            paginate = self.get_paginated_data(
-                queryset=self.get_list(self.get_queryset()),
-                serializer_class=self.serializer_class,
-            )
-            context.update(
-                {"status": status.HTTP_200_OK, "data": paginate}
-            )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
-
-    @swagger_auto_schema(
-        request_body=AddressSerializer,
-        operation_description="This endpoint handles adding address",
-        operation_summary="Add address endpoint",
-    )
-    def create(self, request, *args, **kwargs):
-        """
-        This method handles adding delivery address
-        """
-        context = {"status": status.HTTP_201_CREATED}
-        try:
-            data = self.get_data(request)
-            serializer = self.serializer_class(data=data)
-            if serializer.is_valid():
-                instance = serializer.create(serializer.validated_data)
-                context.update(
-                    {"data": self.serializer_class(instance).data}
-                )
-            else:
-                context.update(
-                    {
-                        "status": status.HTTP_400_BAD_REQUEST,
-                        "errors": self.error_message_formatter(
-                            serializer.errors
-                        ),
-                    }
-                )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
-
-    @swagger_auto_schema(
-        request_body=AddressSerializer,
-        operation_description="This endpoint handles updating address",
-        operation_summary="update address endpoint",
-    )
-    def update(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_200_OK}
-        try:
-            data = self.get_data(request)
-            instance = self.get_object()
-            serializer = self.serializer_class(
-                data=data, instance=instance
-            )
-            if serializer.is_valid():
-                _ = serializer.update(
-                    validated_data=serializer.validated_data,
-                    instance=instance,
-                )
-                context.update(
-                    {"data": self.serializer_class(self.get_object()).data}
-                )
-            else:
-                context.update(
-                    {
-                        "status": status.HTTP_400_BAD_REQUEST,
-                        "errors": self.error_message_formatter(
-                            serializer.errors
-                        ),
-                    }
-                )
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
-
-    @swagger_auto_schema(
-        operation_summary="The endpoint handles get user account"
-    )
-    def retrieve(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_200_OK}
-        try:
-            instance = self.get_object()
-            context.update({"data": self.serializer_class(instance).data})
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
-
-    @swagger_auto_schema(
-        operation_summary="The endpoint handles removing  user account"
-    )
-    def destroy(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_204_NO_CONTENT}
-        try:
-            instance = self.get_object()
-            instance.delete()
-            context.update({"message": "Deleted successfully"})
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
+    

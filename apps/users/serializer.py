@@ -77,6 +77,14 @@ class AddressSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id"]
 
+    def update(self, instance, validated_data):
+        """Update Address instance fields."""
+    
+        for k, v in validated_data.items():
+            setattr(instance, k, v)
+        instance.save()
+        return instance
+
 
 class UserSerializer(serializers.ModelSerializer):
     """

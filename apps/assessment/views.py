@@ -16,7 +16,6 @@ from .serializers import (
 )
 from .models import Answer, Assessment, AssessmentType, Question
 from apps.utils.permissions import (
-    patient_access_only,
     practitioner_access_only,
 )
 
