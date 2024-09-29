@@ -922,7 +922,6 @@ class UserViewSet(BaseViewSet):
             context.update({"message": str(ex)})
         return Response(context, status=context["status"])
 
-
     @swagger_auto_schema(
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -1033,9 +1032,7 @@ class UserViewSet(BaseViewSet):
                     request.user.address.delete()
                 request.user.address = instance
                 request.user.save()
-                context.update(
-                    {"data": AddressSerializer(instance).data}
-                )
+                context.update({"data": AddressSerializer(instance).data})
             else:
                 context.update(
                     {
@@ -1069,16 +1066,14 @@ class UserViewSet(BaseViewSet):
 
             serializer = AddressSerializer(data=data)
             if serializer.is_valid():
-                
+
                 instance = serializer.update(
                     validated_data=serializer.validated_data,
                     instance=request.user.address,
                 )
                 request.user.address = instance
                 request.user.save()
-                context.update(
-                    {"data": AddressSerializer(instance).data}
-                )
+                context.update({"data": AddressSerializer(instance).data})
             else:
                 context.update(
                     {
@@ -1094,8 +1089,6 @@ class UserViewSet(BaseViewSet):
             )
         return Response(context, status=context["status"])
 
-
-   
 
 class PractitionerViewSet(BaseViewSet):
     queryset = Practitioner.objects.select_related("user").all()
