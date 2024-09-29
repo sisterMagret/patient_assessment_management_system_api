@@ -922,43 +922,6 @@ class UserViewSet(BaseViewSet):
             context.update({"message": str(ex)})
         return Response(context, status=context["status"])
 
-    @swagger_auto_schema(
-        operation_description="",
-        responses={},
-        operation_summary="Upload user profile picture",
-    )
-    @action(
-        detail=True,
-        methods=["put"],
-        description="Upload Profile picture",
-        url_path="upload",
-    )
-    def upload(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_200_OK}
-        try:
-
-            if request.FILES.get("avatar") is not None:
-                file = request.FILES["avatar"]
-                validate_file(file)
-
-                instance = request.user
-                instance.avatar = file
-                instance.save(update_fields=["avatar"])
-                context.update(
-                    {
-                        "message": "Profile picture upload successfully",
-                        "data": UserSerializer(
-                            get_object_or_404(User, id=request.user.id)
-                        ).data,
-                    }
-                )
-            else:
-                raise Exception("Kindly upload a valid image")
-        except Exception as ex:
-            context.update(
-                {"message": str(ex), "status": status.HTTP_400_BAD_REQUEST}
-            )
-        return Response(context, status=context["status"])
 
     @swagger_auto_schema(
         request_body=openapi.Schema(
@@ -1043,7 +1006,6 @@ class UserViewSet(BaseViewSet):
                 {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
             )
         return Response(context, status=context["status"])
-    
 
     @swagger_auto_schema(
         request_body=AddressSerializer,
@@ -1051,7 +1013,7 @@ class UserViewSet(BaseViewSet):
         operation_summary="Add address endpoint",
     )
     @action(
-        detail=True,
+        detail=False,
         methods=["post"],
         description="Create Address",
         url_path="address",
@@ -1062,15 +1024,17 @@ class UserViewSet(BaseViewSet):
         """
         context = {"status": status.HTTP_201_CREATED}
         try:
+            print(request.user.address)
             data = self.get_data(request)
-            serializer = self.serializer_class(data=data)
+            serializer = AddressSerializer(data=data)
             if serializer.is_valid():
                 instance = serializer.create(serializer.validated_data)
-                request.user.address().delete()
+                if request.user.address:
+                    request.user.address.delete()
                 request.user.address = instance
                 request.user.save()
                 context.update(
-                    {"data": self.serializer_class(instance).data}
+                    {"data": AddressSerializer(instance).data}
                 )
             else:
                 context.update(
@@ -1096,24 +1060,24 @@ class UserViewSet(BaseViewSet):
         detail=False,
         methods=["put"],
         description="updating address",
-        url_path="address",
+        url_path="update_address",
     )
     def update_address(self, request, *args, **kwargs):
         context = {"status": status.HTTP_200_OK}
         try:
             data = self.get_data(request)
-            
-            serializer = self.serializer_class(data=data)
+
+            serializer = AddressSerializer(data=data)
             if serializer.is_valid():
-                instance, _ = request.user.address.get_or_create(**data)
-                _ = serializer.update(
+                
+                instance = serializer.update(
                     validated_data=serializer.validated_data,
-                    instance=instance,
+                    instance=request.user.address,
                 )
                 request.user.address = instance
                 request.user.save()
                 context.update(
-                    {"data": self.serializer_class(self.get_object()).data}
+                    {"data": AddressSerializer(instance).data}
                 )
             else:
                 context.update(
@@ -1130,46 +1094,8 @@ class UserViewSet(BaseViewSet):
             )
         return Response(context, status=context["status"])
 
-    @swagger_auto_schema(
-        operation_summary="The endpoint handles get user account"
-    )
-    @action(
-        detail=False,
-        methods=["get"],
-        description="get address",
-        url_path="address",
-    )
-    def retrieve_address(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_200_OK}
-        try:
-            context.update({"data": self.serializer_class(request.user.address).data})
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
 
-    @swagger_auto_schema(
-        operation_summary="The endpoint handles removing  user account"
-    )
-    @action(
-        detail=False,
-        methods=["delete"],
-        description="updating address",
-        url_path="address",
-    )
-    def destroy_address(self, request, *args, **kwargs):
-        context = {"status": status.HTTP_204_NO_CONTENT}
-        try:
-            request.user.address.delete()
-            context.update({"message": "Deleted successfully"})
-        except Exception as ex:
-            context.update(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
-            )
-        return Response(context, status=context["status"])
-
-
+   
 
 class PractitionerViewSet(BaseViewSet):
     queryset = Practitioner.objects.select_related("user").all()
@@ -1379,7 +1305,7 @@ class PractitionerViewSet(BaseViewSet):
                     ].id
                     for v in data
                 }
-               
+
                 practitioner.specializations.set(specializations)
                 context.update({"data": "Specialization added"})
             else:
@@ -1683,7 +1609,3 @@ class PatientViewSet(BaseViewSet):
                 {"status": status.HTTP_400_BAD_REQUEST, "message": str(ex)}
             )
         return Response(context, status=context["status"])
-
-
-
-    

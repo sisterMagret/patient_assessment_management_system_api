@@ -79,7 +79,7 @@ class AddressSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         """Update Address instance fields."""
-    
+
         for k, v in validated_data.items():
             setattr(instance, k, v)
         instance.save()
@@ -100,9 +100,9 @@ class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField(
         "get_name", help_text="User's full name"
     )
-    avatar = serializers.SerializerMethodField(
-        "get_avatar", help_text="User's avatar URL"
-    )
+    # avatar = serializers.SerializerMethodField(
+    #     "get_avatar", help_text="User's avatar URL"
+    # )
     address = AddressSerializer(read_only=True, required=False)
 
     class Meta:
@@ -114,7 +114,7 @@ class UserSerializer(serializers.ModelSerializer):
             "phone_number",
             "address",
             "gender",
-            "avatar",
+            # "avatar",
             "is_accept_terms_and_condition",
             "date_of_birth",
             "group",
