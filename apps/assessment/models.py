@@ -37,7 +37,6 @@ class Answer(AbstractUUID, TimeStampedModel):
 
 class Assessment(AbstractUUID, TimeStampedModel):
     """Represents an assessment instance, linking practitioners, patients, and types."""
-    practitioner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="practitioner_assessments")
     patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name="patient_assessments")
     assessment_type = models.ForeignKey(AssessmentType, on_delete=models.CASCADE)
     date = models.DateTimeField(default=timezone.now)

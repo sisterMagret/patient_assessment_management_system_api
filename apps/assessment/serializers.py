@@ -50,6 +50,7 @@ class CreateAssessmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assessment
         fields = ['assessment_type', 'patient', 'results']
+        read_only_fields = ['id', 'patient']
 
     def create(self, validated_data):
         results_data = validated_data.pop('results', [])

@@ -8,6 +8,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.utils.decorators import method_decorator
 from apps.utils.base import BaseViewSet
+from apps.utils.enums import UserType
 from .serializers import (
     AnswerSerializer,
     AssessmentSerializer,
@@ -29,9 +30,10 @@ class AssessmentViewSet(BaseViewSet):
     def get_queryset(self):
         """Override to filter assessments for the current user."""
         if self.request.user.is_authenticated:
-            return self.queryset.filter(
-                Q(patient=self.request.user) | Q(practitioner=self.request.user)
-            )
+            if self.request.user.user_role in [UserType.USER]:
+                return self.queryset.filter(patient=self.request.user)
+            elif self.request.user.user_role in [UserType.USER]:
+                return self.queryset
         else:
             return Assessment.objects.none() 
         
@@ -84,7 +86,9 @@ class AssessmentViewSet(BaseViewSet):
         """Create a new assessment."""
         serializer = CreateAssessmentSerializer(data=request.data)
         if serializer.is_valid():
-            assessment = serializer.save(practitioner=request.user)
+            assessment = serializer.save()
+            assessment.patient = request.user
+            assessment.save()
             logger.info(f"Create assessment: {request.user} created assessment {assessment.id}.")
             return Response(
                 {"status": status.HTTP_201_CREATED, "data": self.serializer_class(assessment).data, "message": "Assessment created successfully"},
